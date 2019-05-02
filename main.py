@@ -1,0 +1,110 @@
+import os
+import sys
+import pandas as pd
+import numpy as np
+# import torch.nn as nn
+# import torch
+# from torch.nn.parameter import Parameter
+# import torch.optim as optim
+# from torch.autograd import Variable
+# import torch.nn.functional as F
+# from datetime import datetime
+
+
+# class DnnModel(nn.Module):
+#     def __init__(self, node_nums=[],):
+#         super(DnnModel, self).__init__()
+#         self.node_nums = node_nums
+#         if self.node_nums[-1] == 0:
+#             self.node_nums = self.node_nums[:-1]
+#         self.node_nums = [2] + self.node_nums
+#         self.layers = []
+#         for i_layer in range(1, len(self.node_nums)):
+#             self.layers.append(nn.Linear(self.node_nums[i_layer-1], self.node_nums[i_layer], bias=True))
+#             self.layers.append(nn.ReLU())
+#         self.layers = nn.Sequential(*self.layers)
+#         self.out = nn.Linear(self.node_nums[-1], 1, bias=False)
+#         # self.layers.append(nn.Linear(self.node_nums[-1], 2, bias=True))
+#
+#     def forward(self, x):
+#         out = self.layers(x)
+#         out = self.out(out)
+#         # return F.log_softmax(out, dim=1)
+#         return out
+
+
+def get_ty_IDs(df, obs_name):
+    OBS = df[df.agency == obs_name]
+    ty_ID = OBS.ty_ID
+    print('len of ty_ID is ', len(ty_ID))
+    ty_IDs = []
+    ty_IDs.append(ty_ID.iloc[0])
+    count = 0
+    for j in range(1, len(ty_ID)):
+        if ty_ID.iloc[j] == ty_IDs[count]:
+            continue
+        else:
+            ty_IDs.append(ty_ID.iloc[j])
+            count += 1
+    print('ty_IDs are ', ty_IDs)
+    ty_IDs = np.sort(np.array(ty_IDs))
+    # print(ty_IDs)
+    return ty_IDs
+
+
+def read_TC_Data(root):
+    df = pd.read_csv(root)
+    df[df == -999] = np.nan
+    return df
+
+
+def main():
+    df = read_TC_Data('/Users/ageliss/Documents/GitHub/1th_Ocean_Predict_Center/Typhoon_data2.csv')
+    # case = df[df.ty_name == 'MAN-YI']
+    agencies = ['KSLR', 'RJTD', 'BABJ', 'PGTW', 'VHHH', 'WRF', 'COAWST']
+    ty_IDs = get_ty_IDs(df, 'BABJ')
+    count = 0
+    for j in range(len(ty_IDs)):
+        print(j)
+        a = df[df.ty_ID == ty_IDs[j]]
+        b = a[a.agency == 'BABJ']
+        time = b.time
+        print(time.iloc[0])
+
+
+        # print(df[df.time == time.iloc[10]].agency)
+        c = df[df.time == time.iloc[10]]
+        print(c[c.agency == 'BABJ'])
+        # count += 1
+        # if count == 10:
+        sys.exit()
+
+
+
+    # agency_old = agencies[0]
+    # print(agency_old)
+    # index = agencies.index
+    # for j in range(len(index)):
+    #     if agencies[index[j]] == agency_old:
+    #         continue
+    #     else:
+    #         agency_old = agencies[index[j]]
+    #         print(agency_old)
+    # for j in range(len(agencies)):
+    #     a = df[df.ty_name == 'MAN-YI']
+    #     try:
+    #         b = a[a.agency == agencies[j]]
+    #         print(b)
+    #     except:
+    #         pass
+
+    # print(case['agency'])
+    # print(case.iloc[0]['agency'])
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
