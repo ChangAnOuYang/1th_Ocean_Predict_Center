@@ -34,6 +34,16 @@ for root, dirs, files in list_dirs:
                 forecasting_agency = eachline[0]
                 ty_name = eachline[1]
                 ty_ID = eachline[2]
+                if info.endswith('.PGT'):
+                    file_name2 = os.path.join(dir, info[:-4]+'.BAB')
+                    # print(file_name2)
+                    try:
+                        with open(file_name2, 'r') as file2:
+                            line2 = file2.readline().split()
+                            ty_ID = line2[2]
+                            print('Use BAB ty_ID instead')
+                    except:
+                        continue
                 year = eachline[4]
                 # print(line)
                 for lines in file:
@@ -63,6 +73,6 @@ for root, dirs, files in list_dirs:
                                                     '48MSLP', '48MaxWind', '72lat', '72lon', '72MSLP', '72MaxWind'])
                         res = res.append(df1, ignore_index=True)
                         # output.write("\n")
-res.to_csv('Typhoon_data.csv')
+res.to_csv('Typhoon_data2.csv')
 print(res)
 
