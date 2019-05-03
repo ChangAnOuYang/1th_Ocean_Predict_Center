@@ -8,7 +8,7 @@ import numpy as np
 # import torch.optim as optim
 # from torch.autograd import Variable
 # import torch.nn.functional as F
-# from datetime import datetime
+from datetime import datetime, timedelta
 
 
 # class DnnModel(nn.Module):
@@ -36,7 +36,7 @@ import numpy as np
 def get_ty_IDs(df, obs_name):
     OBS = df[df.agency == obs_name]
     ty_ID = OBS.ty_ID
-    print('len of ty_ID is ', len(ty_ID))
+    # print('len of ty_ID is ', len(ty_ID))
     ty_IDs = []
     ty_IDs.append(ty_ID.iloc[0])
     count = 0
@@ -46,7 +46,7 @@ def get_ty_IDs(df, obs_name):
         else:
             ty_IDs.append(ty_ID.iloc[j])
             count += 1
-    print('ty_IDs are ', ty_IDs)
+    # print('ty_IDs are ', ty_IDs)
     ty_IDs = np.sort(np.array(ty_IDs))
     # print(ty_IDs)
     return ty_IDs
@@ -64,22 +64,32 @@ def main():
     agencies = ['KSLR', 'RJTD', 'BABJ', 'PGTW', 'VHHH', 'WRF', 'COAWST']
     ty_IDs = get_ty_IDs(df, 'BABJ')
     count = 0
-    for j in range(len(ty_IDs)):
-        print(j)
-        a = df[df.ty_ID == ty_IDs[j]]
-        b = a[a.agency == 'BABJ']
-        time = b.time
-        print(time.iloc[0])
+    train_set = []
+    target = []
+    # for j in range(len(ty_IDs)):
+    for j in range(0, len(ty_IDs)):
+        each_typhoon = df[df.ty_ID == ty_IDs[j]]
+        OBS = each_typhoon[each_typhoon.agency == 'BABJ']
+        time = OBS.time
+        # print(each_typhoon.agency, each_typhoon.time)
+        # print(OBS)
+        for k in range(len(time)):
+            print('j, k = ', j, k)
+            _time = time.iloc[k]
+            _time = datetime(year=int(_time[0:4]), month=int(_time[5:7]), day=int(_time[8:10]), hour=int(_time[11:13]))
+            # print(_time)
+            print('OBS time: ', OBS[OBS.time == str(_time)]['time'].iloc[0])
+            print('OBS MaxWind: ', OBS[OBS.time == str(_time)].MaxWind.iloc[0])
+            start_time = _time + timedelta(hours=-24)
+            # print(start_time)
+            inputs = each_typhoon[each_typhoon.time == str(start_time)]
+            print('Predict 24h time: ', inputs['time'].iloc[0])
+            print('Predict 24h agencies: ', inputs['agency'])
+            print('Predict 24h MaxWindr: ', inputs['24MaxWind'])
+            sys.exit()
 
 
-        # print(df[df.time == time.iloc[10]].agency)
-        c = df[df.time == time.iloc[10]]
-        print(c[c.agency == 'BABJ'])
-        # count += 1
-        # if count == 10:
         sys.exit()
-
-
 
     # agency_old = agencies[0]
     # print(agency_old)
@@ -98,8 +108,6 @@ def main():
     #     except:
     #         pass
 
-    # print(case['agency'])
-    # print(case.iloc[0]['agency'])
 
 
 if __name__ == '__main__':
