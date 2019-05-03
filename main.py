@@ -67,6 +67,7 @@ def main():
     train_set = []
     target = []
     # for j in range(len(ty_IDs)):
+    '''todo list: 用define模块化'''
     for j in range(0, len(ty_IDs)):
         each_typhoon = df[df.ty_ID == ty_IDs[j]]
         OBS = each_typhoon[each_typhoon.agency == 'BABJ']
@@ -78,18 +79,33 @@ def main():
             _time = time.iloc[k]
             _time = datetime(year=int(_time[0:4]), month=int(_time[5:7]), day=int(_time[8:10]), hour=int(_time[11:13]))
             # print(_time)
-            print('OBS time: ', OBS[OBS.time == str(_time)]['time'].iloc[0])
-            print('OBS MaxWind: ', OBS[OBS.time == str(_time)].MaxWind.iloc[0])
+            print('OBS time: ', _time)
+            print('OBS MaxWind: ', OBS['MaxWind'].iloc[k])
+            target.append(OBS['MaxWind'].iloc[k])
             start_time = _time + timedelta(hours=-24)
             # print(start_time)
             inputs = each_typhoon[each_typhoon.time == str(start_time)]
-            print('Predict 24h time: ', inputs['time'].iloc[0])
-            print('Predict 24h agencies: ', inputs['agency'])
-            print('Predict 24h MaxWindr: ', inputs['24MaxWind'])
-            sys.exit()
+            _train_set = np.zeros([1, 6]) * np.nan
+            _train_set = _train_set[0]
+            print(_train_set)
+            for m in range(len(inputs)):
+                if inputs['agency'].iloc[m] == 'BABJ':
+                    continue
+                for n in range(len(agencies)):
+                    if inputs['agency'].iloc[m] == agencies[n]:
+                        _train_set[n] = np.array(inputs['24MaxWind'].iloc[m])
+                        print('Predict 24h time: ', inputs['time'].iloc[m])
+                        print('Predict 24h agencies: ', inputs['agency'].iloc[m])
+                        print('Predict 24h MaxWind: ', inputs['24MaxWind'].iloc[m])
+            train_set.append(_train_set)
+            print('train_set = ', train_set)
+            print('target', target)
+            if k == 2:
+                print('reshape = ', np.reshape(train_set, [-1, 6]))
+                sys.exit()
 
 
-        sys.exit()
+        # sys.exit()
 
     # agency_old = agencies[0]
     # print(agency_old)
