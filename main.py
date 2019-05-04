@@ -102,10 +102,9 @@ def main():
             print('target', target)
             if k == 2:
                 print('reshape = ', np.reshape(train_set, [-1, 6]))
-                sys.exit()
-
-
-        # sys.exit()
+                # sys.exit()
+    np.save('packed_trainset.npy', [train_set, target])
+            # sys.exit()
 
     # agency_old = agencies[0]
     # print(agency_old)
