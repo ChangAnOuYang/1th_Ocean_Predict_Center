@@ -103,12 +103,13 @@ def pack_trainset(ty_IDs, df, agencies, save_data=True, pre_hour=-24):
             train_set, _train_set = pack_each_forcast_record(inputs, train_set, agencies)
             print('train_set = ', _train_set)
             print('target', OBS['MaxWind'].iloc[k])
+        # break
     if save_data:
         np.save('packed_trainset'+str(pre_hour)+'.npy', [train_set, target])
     return [train_set, target]
 
 
-def main():
+def pack_data():
     df = read_TC_Data('/Users/ageliss/Documents/GitHub/1th_Ocean_Predict_Center/Typhoon_data2.csv')
     # case = df[df.ty_name == 'MAN-YI']
     agencies = ['KSLR', 'RJTD', 'BABJ', 'PGTW', 'VHHH', 'WRF', 'COAWST']
@@ -118,8 +119,23 @@ def main():
     print('END Packing data: reshape = ', train_set)
 
 
+def main(load_data=True):
+    if load_data:
+        print('loading ...')
+        [train_set, target] = np.load('./packed_trainset-24.npy')
+        # train_set = np.reshape(train_set, [-1, 6])
+        print('train_set = ', train_set)
+        print('target = ', target)
+    else:
+        pack_data()
+    model = DnnModel(node_nums=[10, 5])
+    print(model)
+
+    # for epoch in range(100):
+        # train()
+
 if __name__ == '__main__':
-    main()
+    main(load_data=True)
 
 
 
