@@ -9,6 +9,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 import torch.nn.functional as F
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 
 
 class DnnModel(nn.Module):
@@ -103,7 +104,7 @@ def pack_trainset(ty_IDs, df, agencies, pre_hour=-24):
             train_set, _train_set = pack_each_forcast_record(inputs, train_set, agencies)
             print('train_set = ', _train_set)
             print('target', OBS['MaxWind'].iloc[k])
-        break
+        # break
     return [train_set, target]
 
 
@@ -130,23 +131,30 @@ def main(load_data=True):
         train_sets = train_sets.transpose()
         train_sets_withNone = train_sets.copy()
         train_sets[np.isnan(train_sets)] = 0
+        targets[np.isnan(targets)] = 0
         print('train_sets = ', train_sets)
         print('targets = ', targets)
+        print('train_sets.shape = ', train_sets.shape)
+        print('targets.shape = ', targets.shape)
+        # sys.exit()
     else:
         [train_sets, targets] = pack_data(save_data=True)
+        train_sets_withNone = train_sets.copy()
         print('Ending pack data')
 
     model = DnnModel(node_nums=[20, 0])
     print(model)
     x_test = np.random.rand(10, 6)
     y_test = np.random.rand(10)
-    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.)
+    optimizer = optim.SGD(model.parameters(), lr=0.0003, momentum=0.0)
     train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
     x_test, y_test = Variable(torch.from_numpy(x_test).float()), \
                         Variable(torch.from_numpy(y_test).float())
 
+    loss_train = []
     for epoch in range(1000):
+        # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
         model.eval()
         y_pre_test = model(x_test)
         # print(y_pre_test.reshape(-1))
@@ -161,12 +169,16 @@ def main(load_data=True):
         print(model.state_dict()['layers.0.weight'])
         print('below is weight2:')
         print(model.state_dict()['out.weight'])
+        # scheduler.step()
         optimizer.step()
+        if epoch % 1 == 0:
+            loss_train.append(loss.item())
     print('predicted output = ', output.reshape(-1))
     print('Ground Truth = ', target)
     print('Predicted MSE = ', loss.item())
-    print('Original_Mean_Value_Method MSE = ', ((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2).mean(axis=0))
-
+    print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
+    plt.plot(loss_train)
+    plt.show()
 
 if __name__ == '__main__':
     main(load_data=True)
