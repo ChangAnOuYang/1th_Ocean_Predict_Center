@@ -17,7 +17,7 @@ class DnnModel(nn.Module):
         self.node_nums = node_nums
         if self.node_nums[-1] == 0:
             self.node_nums = self.node_nums[:-1]
-        self.node_nums = [2] + self.node_nums
+        self.node_nums = [6] + self.node_nums
         self.layers = []
         for i_layer in range(1, len(self.node_nums)):
             self.layers.append(nn.Linear(self.node_nums[i_layer-1], self.node_nums[i_layer], bias=True))
@@ -69,7 +69,7 @@ def pack_each_forcast_record(inputs, train_set, agencies):
         '''Loop each agency to put the data at the right position'''
         for n in range(len(agencies)):
             if inputs['agency'].iloc[m] == agencies[n]:
-                _train_set[n] = np.array(inputs['24MaxWind'].iloc[m])
+                _train_set[n] = inputs['24MaxWind'].iloc[m]
                 print('Predict 24h time: ', inputs['time'].iloc[m])
                 print('Predict 24h agencies: ', inputs['agency'].iloc[m])
                 print('Predict 24h MaxWind: ', inputs['24MaxWind'].iloc[m])
@@ -77,7 +77,7 @@ def pack_each_forcast_record(inputs, train_set, agencies):
     return train_set, _train_set
 
 
-def pack_trainset(ty_IDs, df, agencies, save_data=True, pre_hour=-24):
+def pack_trainset(ty_IDs, df, agencies, pre_hour=-24):
     count = 0
     train_set = []
     target = []
@@ -103,39 +103,53 @@ def pack_trainset(ty_IDs, df, agencies, save_data=True, pre_hour=-24):
             train_set, _train_set = pack_each_forcast_record(inputs, train_set, agencies)
             print('train_set = ', _train_set)
             print('target', OBS['MaxWind'].iloc[k])
-        # break
-    if save_data:
-        np.save('packed_trainset'+str(pre_hour)+'.npy', [train_set, target])
+        break
     return [train_set, target]
 
 
-def pack_data():
+def pack_data(save_data=True):
     df = read_TC_Data('/Users/ageliss/Documents/GitHub/1th_Ocean_Predict_Center/Typhoon_data2.csv')
     # case = df[df.ty_name == 'MAN-YI']
     agencies = ['KSLR', 'RJTD', 'BABJ', 'PGTW', 'VHHH', 'WRF', 'COAWST']
     ty_IDs = get_ty_IDs(df, 'BABJ')
-    [train_set, target] = pack_trainset(ty_IDs, df, agencies, save_data=True, pre_hour=-24)
+    pre_hour = -24
+    [train_set, target] = pack_trainset(ty_IDs, df, agencies, pre_hour=pre_hour)
     train_set = np.reshape(train_set, [-1, 6])
+    target = np.reshape(target, -1)
+    if save_data:
+        np.save('packed_trainset'+str(pre_hour)+'.npy', train_set)
+        np.save('packed_target' + str(pre_hour) + '.npy', target)
     print('END Packing data: reshape = ', train_set)
+    return [train_set, target]
 
 
 def main(load_data=True):
     if load_data:
         print('loading ...')
-        [train_set, target] = np.load('./packed_trainset-24.npy')
-        # train_set = np.reshape(train_set, [-1, 6])
-        print('train_set = ', train_set)
-        print('target = ', target)
+        train_sets, targets = np.load('./packed_trainset-24.npy'), np.load('./packed_target-24.npy')
+        print('train_sets = ', train_sets)
+        print('targets = ', targets)
     else:
-        pack_data()
+        [train_sets, targets] = pack_data(save_data=True)
+        print('Ending pack data')
     model = DnnModel(node_nums=[10, 5])
     print(model)
+    x_test = np.random.rand(10, 6)
+    y_test = np.random.rand(10)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.1)
+    train_set, target = Variable(torch.from_numpy(train_sets).float()), \
+                        Variable(torch.from_numpy(targets).float())
+    x_test, y_test = Variable(torch.from_numpy(x_test).float()), \
+                        Variable(torch.from_numpy(y_test).float())
+    for epoch in range(10):
+        model.eval()
+        y_pre_test = model(x_test)
+        print(y_pre_test.reshape(-1))
 
-    # for epoch in range(100):
-        # train()
 
 if __name__ == '__main__':
     main(load_data=True)
+    '''Try Xgboost'''
 
 
 
