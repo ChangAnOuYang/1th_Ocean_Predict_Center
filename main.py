@@ -117,8 +117,8 @@ def pack_data(save_data=True):
     train_set = np.reshape(train_set, [-1, 6])
     target = np.reshape(target, -1)
     if save_data:
-        np.save('packed_trainset'+str(pre_hour)+'.npy', train_set)
-        np.save('packed_target' + str(pre_hour) + '.npy', target)
+        np.save('packed_trainset'+str(pre_hour)+'.npy', np.array([np.transpose(train_set), target]))
+        # np.save('packed_target' + str(pre_hour) + '.npy', target)
     print('END Packing data: reshape = ', train_set)
     return [train_set, target]
 
@@ -126,7 +126,8 @@ def pack_data(save_data=True):
 def main(load_data=True):
     if load_data:
         print('loading ...')
-        train_sets, targets = np.load('./packed_trainset-24.npy'), np.load('./packed_target-24.npy')
+        train_sets, targets = np.load('./packed_trainset-24.npy')
+        train_sets = train_sets.transpose()
         print('train_sets = ', train_sets)
         print('targets = ', targets)
     else:
