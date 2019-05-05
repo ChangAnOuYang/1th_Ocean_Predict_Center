@@ -128,12 +128,14 @@ def main(load_data=True):
         print('loading ...')
         train_sets, targets = np.load('./packed_trainset-24.npy')
         train_sets = train_sets.transpose()
+        train_sets_withNone = train_sets.copy()
         train_sets[np.isnan(train_sets)] = 0
         print('train_sets = ', train_sets)
         print('targets = ', targets)
     else:
         [train_sets, targets] = pack_data(save_data=True)
         print('Ending pack data')
+
     model = DnnModel(node_nums=[20, 0])
     print(model)
     x_test = np.random.rand(10, 6)
@@ -143,12 +145,12 @@ def main(load_data=True):
                         Variable(torch.from_numpy(targets).float())
     x_test, y_test = Variable(torch.from_numpy(x_test).float()), \
                         Variable(torch.from_numpy(y_test).float())
+
     for epoch in range(1000):
         model.eval()
         y_pre_test = model(x_test)
         # print(y_pre_test.reshape(-1))
         loss_test = float(F.mse_loss(y_pre_test.reshape(-1), y_test).item())
-
         model.train()
         optimizer.zero_grad()
         output = model(train_set)
