@@ -128,24 +128,41 @@ def main(load_data=True):
         print('loading ...')
         train_sets, targets = np.load('./packed_trainset-24.npy')
         train_sets = train_sets.transpose()
+        train_sets[np.isnan(train_sets)] = 0
         print('train_sets = ', train_sets)
         print('targets = ', targets)
     else:
         [train_sets, targets] = pack_data(save_data=True)
         print('Ending pack data')
-    model = DnnModel(node_nums=[10, 5])
+    model = DnnModel(node_nums=[20, 0])
     print(model)
     x_test = np.random.rand(10, 6)
     y_test = np.random.rand(10)
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.1)
+    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.)
     train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
     x_test, y_test = Variable(torch.from_numpy(x_test).float()), \
                         Variable(torch.from_numpy(y_test).float())
-    for epoch in range(10):
+    for epoch in range(1000):
         model.eval()
         y_pre_test = model(x_test)
-        print(y_pre_test.reshape(-1))
+        # print(y_pre_test.reshape(-1))
+        loss_test = float(F.mse_loss(y_pre_test.reshape(-1), y_test).item())
+
+        model.train()
+        optimizer.zero_grad()
+        output = model(train_set)
+        loss = F.mse_loss(output.reshape(-1), target)
+        print(loss)
+        loss.backward()
+        print('below is weight0:')
+        print(model.state_dict()['layers.0.weight'])
+        print('below is weight2:')
+        print(model.state_dict()['out.weight'])
+        optimizer.step()
+    print('predicted output = ', output.reshape(-1))
+    print('Ground Truth = ', target)
+    print('Predicted MSE = ', loss.item())
 
 
 if __name__ == '__main__':
