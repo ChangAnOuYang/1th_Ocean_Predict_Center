@@ -163,6 +163,7 @@ def main(load_data=True):
     print('predicted output = ', output.reshape(-1))
     print('Ground Truth = ', target)
     print('Predicted MSE = ', loss.item())
+    print('Original_Mean_Value_Method MSE = ', ((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2).mean(axis=0))
 
 
 if __name__ == '__main__':
