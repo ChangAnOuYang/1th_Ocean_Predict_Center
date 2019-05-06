@@ -10,6 +10,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+import xgboost as xgb
 
 
 class DnnModel(nn.Module):
@@ -32,6 +33,29 @@ class DnnModel(nn.Module):
         out = self.out(out)
         # return F.log_softmax(out, dim=1)
         return out
+
+
+def XGBoost_model(X_train, y_train):
+    params = {
+        'booster': 'gbtree',
+        'objective': 'multi:softmax',
+        'num_class': 3,
+        'gamma': 0.1,
+        'max_depth': 6,
+        'lambda': 2,
+        'subsample': 0.7,
+        'colsample_bytree': 0.7,
+        'min_child_weight': 3,
+        'silent': 1,
+        'eta': 0.1,
+        'seed': 1000,
+        'nthread': 4,
+    }
+    plst = params.items()
+    dtrain = xgb.DMatrix(X_train, y_train)
+    num_rounds = 500
+    model = xgb.train(plst, dtrain, num_rounds)
+    return model
 
 
 def get_ty_IDs(df, obs_name):
@@ -177,7 +201,7 @@ def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
     plt.show()
 
 
-def main(load_data=True, plot_loss=True):
+def main(load_data=True, plot_loss=True, model_type='bp'):
     if load_data:
         print('loading ...')
         train_sets, targets = np.load('./packed_trainset-24.npy')
@@ -190,8 +214,12 @@ def main(load_data=True, plot_loss=True):
     targets[np.isnan(targets)] = 0
     train_set, target, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
 
-    model = DnnModel(node_nums=[20, 0])
-    print(model)
+    if model_type == 'bp':
+        model = DnnModel(node_nums=[20, 0])
+        print(model)
+    elif model_type == 'xgboost':
+        model = XGBoost_model(train_set, target)
+        sys.exit()
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
     loss_train = []
     loss_tests = []
@@ -229,7 +257,7 @@ def main(load_data=True, plot_loss=True):
 
 
 if __name__ == '__main__':
-    main(load_data=True)
+    main(load_data=True, plot_loss=True, model_type='xgboost')
     '''Try Xgboost'''
     '''Try remove with over 3nons lines'''
 
