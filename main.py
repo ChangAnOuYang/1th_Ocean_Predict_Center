@@ -183,6 +183,7 @@ def main(load_data=True):
 if __name__ == '__main__':
     main(load_data=True)
     '''Try Xgboost'''
+    '''Try remove with over 3nons lines'''
 
 
 
