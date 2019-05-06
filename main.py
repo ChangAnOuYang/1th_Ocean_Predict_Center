@@ -154,7 +154,11 @@ def remove_allnan_produce_testset(train_sets, targets):
     print('test_sets.shape = ', test_sets.shape)
     print('test_targets.shape = ', _test_targets.shape)
     # sys.exit()
-    return train_sets, targets, train_sets_withNone, test_sets, _test_targets
+    train_set, target = Variable(torch.from_numpy(train_sets).float()), \
+                        Variable(torch.from_numpy(targets).float())
+    test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
+                              Variable(torch.from_numpy(_test_targets).float())
+    return train_set, target, train_sets_withNone, test_sets, test_targets
 
 
 def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
@@ -184,16 +188,11 @@ def main(load_data=True, plot_loss=True):
         print('Ending pack data')
     train_sets[np.isnan(train_sets)] = 0
     targets[np.isnan(targets)] = 0
-    train_sets, targets, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
+    train_set, target, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
 
     model = DnnModel(node_nums=[20, 0])
     print(model)
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
-    train_set, target = Variable(torch.from_numpy(train_sets).float()), \
-                        Variable(torch.from_numpy(targets).float())
-    test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
-                        Variable(torch.from_numpy(test_targets).float())
-
     loss_train = []
     loss_tests = []
     for epoch in range(1500):
@@ -218,13 +217,13 @@ def main(load_data=True, plot_loss=True):
         if epoch % 1 == 0:
             loss_train.append(loss.item())
             loss_tests.append(loss_test)
-    print('predicted output = ', output.reshape(-1))
-    print('Ground Truth = ', target)
+    print('predicted output = ', output.data.numpy().reshape(-1))
+    print('Ground Truth = ', target.data.numpy())
     print('Original Mean Value = ', np.nanmean(train_sets_withNone, axis=1))
     # print('Predicted MSE = ', loss.item())
     print('Predicted MAE = ', np.mean(np.abs((output.reshape(-1) - target).data.numpy())))
     # print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
-    print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - targets)))
+    print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - target)))
     if plot_loss:
         plot_results(loss_train, loss_tests, output, target, train_sets_withNone)
 
