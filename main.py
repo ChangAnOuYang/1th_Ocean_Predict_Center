@@ -124,41 +124,85 @@ def pack_data(save_data=True):
     return [train_set, target]
 
 
-def main(load_data=True):
+def remove_allnan_produce_testset(train_sets, targets):
+    '''Remove those trainsets without useful information'''
+    standard = np.random.rand(len(targets))
+    for j in range(len(targets)):
+        if train_sets[j].mean() != 0:
+            if j == 0:
+                _train_sets = train_sets[j]
+                _targets = targets[j]
+                _test_sets = train_sets[j]
+                _test_targets = targets[j]
+            else:
+                if standard[j] >= 0.1:
+                    _train_sets = np.vstack((_train_sets, train_sets[j]))
+                    _targets = np.hstack((_targets, targets[j]))
+                else:
+                    _test_sets = np.vstack((_test_sets, train_sets[j]))
+                    _test_targets = np.hstack((_test_targets, targets[j]))
+            # _targets.append(targets[j])
+    train_sets = _train_sets.reshape(-1, 6)
+    test_sets = _test_sets.reshape(-1, 6)
+    targets = _targets
+    train_sets_withNone = train_sets.copy()
+    train_sets_withNone[train_sets_withNone == 0] = np.nan
+    print('train_sets = ', train_sets)
+    print('targets = ', targets)
+    print('train_sets.shape = ', train_sets.shape)
+    print('targets.shape = ', targets.shape)
+    print('test_sets.shape = ', test_sets.shape)
+    print('test_targets.shape = ', _test_targets.shape)
+    # sys.exit()
+    return train_sets, targets, train_sets_withNone, test_sets, _test_targets
+
+
+def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
+    plt.subplot(311)
+    plt.plot(loss_train[100:], label='train loss')
+    plt.plot(loss_tests[100:], label='test loss')
+    plt.legend()
+    plt.subplot(312)
+    plt.plot(output.data.numpy(), label='Predicted')
+    plt.plot(target.data.numpy(), 'k', label='Ground Truth')
+    plt.legend()
+    plt.subplot(313)
+    plt.plot(np.nanmean(train_sets_withNone, axis=1), label='Original Mean Value')
+    plt.plot(target.data.numpy(), 'k', label='Ground Truth')
+    plt.legend()
+    plt.show()
+
+
+def main(load_data=True, plot_loss=True):
     if load_data:
         print('loading ...')
         train_sets, targets = np.load('./packed_trainset-24.npy')
         train_sets = train_sets.transpose()
-        train_sets_withNone = train_sets.copy()
-        train_sets[np.isnan(train_sets)] = 0
-        targets[np.isnan(targets)] = 0
-        print('train_sets = ', train_sets)
-        print('targets = ', targets)
-        print('train_sets.shape = ', train_sets.shape)
-        print('targets.shape = ', targets.shape)
         # sys.exit()
     else:
         [train_sets, targets] = pack_data(save_data=True)
-        train_sets_withNone = train_sets.copy()
         print('Ending pack data')
+    train_sets[np.isnan(train_sets)] = 0
+    targets[np.isnan(targets)] = 0
+    train_sets, targets, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
 
     model = DnnModel(node_nums=[20, 0])
     print(model)
-    x_test = np.random.rand(10, 6)
-    y_test = np.random.rand(10)
-    optimizer = optim.SGD(model.parameters(), lr=0.0003, momentum=0.0)
+    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
     train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
-    x_test, y_test = Variable(torch.from_numpy(x_test).float()), \
-                        Variable(torch.from_numpy(y_test).float())
+    test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
+                        Variable(torch.from_numpy(test_targets).float())
 
     loss_train = []
-    for epoch in range(1000):
+    loss_tests = []
+    for epoch in range(1500):
         # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
         model.eval()
-        y_pre_test = model(x_test)
+        y_pre_test = model(test_sets)
         # print(y_pre_test.reshape(-1))
-        loss_test = float(F.mse_loss(y_pre_test.reshape(-1), y_test).item())
+        loss_test = float(F.mse_loss(y_pre_test.reshape(-1), test_targets).item())
+
         model.train()
         optimizer.zero_grad()
         output = model(train_set)
@@ -173,12 +217,17 @@ def main(load_data=True):
         optimizer.step()
         if epoch % 1 == 0:
             loss_train.append(loss.item())
+            loss_tests.append(loss_test)
     print('predicted output = ', output.reshape(-1))
     print('Ground Truth = ', target)
-    print('Predicted MSE = ', loss.item())
-    print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
-    plt.plot(loss_train)
-    plt.show()
+    print('Original Mean Value = ', np.nanmean(train_sets_withNone, axis=1))
+    # print('Predicted MSE = ', loss.item())
+    print('Predicted MAE = ', np.mean(np.abs((output.reshape(-1) - target).data.numpy())))
+    # print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
+    print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - targets)))
+    if plot_loss:
+        plot_results(loss_train, loss_tests, output, target, train_sets_withNone)
+
 
 if __name__ == '__main__':
     main(load_data=True)
