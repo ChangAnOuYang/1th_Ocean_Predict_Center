@@ -19,7 +19,7 @@ class DnnModel(nn.Module):
         self.node_nums = node_nums
         if self.node_nums[-1] == 0:
             self.node_nums = self.node_nums[:-1]
-        self.node_nums = [6] + self.node_nums
+        self.node_nums = [4] + self.node_nums
         self.layers = []
         for i_layer in range(1, len(self.node_nums)):
             self.layers.append(nn.Linear(self.node_nums[i_layer-1], self.node_nums[i_layer], bias=True))
@@ -84,7 +84,7 @@ def read_TC_Data(root):
 
 
 def pack_each_forcast_record(inputs, train_set, agencies):
-    _train_set = np.zeros([1, 6]) * np.nan
+    _train_set = np.zeros([1, 7]) * np.nan
     _train_set = _train_set[0]
     print(_train_set)
     '''Loop each forecast of this time record'''
@@ -139,7 +139,7 @@ def pack_data(save_data=True):
     ty_IDs = get_ty_IDs(df, 'BABJ')
     pre_hour = -24
     [train_set, target] = pack_trainset(ty_IDs, df, agencies, pre_hour=pre_hour)
-    train_set = np.reshape(train_set, [-1, 6])
+    train_set = np.reshape(train_set, [-1, 7])
     target = np.reshape(target, -1)
     if save_data:
         np.save('packed_trainset'+str(pre_hour)+'.npy', np.array([np.transpose(train_set), target]))
@@ -151,23 +151,32 @@ def pack_data(save_data=True):
 def remove_allnan_produce_testset(train_sets, targets):
     '''Remove those trainsets without useful information'''
     standard = np.random.rand(len(targets))
+    fill_mean = np.nanmean(train_sets, axis=0)
+    print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
+    b_good = [0, 1, 3, 4]  # only these columns contain valuable information
     for j in range(len(targets)):
-        if train_sets[j].mean() != 0:
+        try:
+            mean_value = np.nanmean(train_sets[j])
+        except:
+            continue
+        if mean_value != np.nan:
+            for k in range(len(train_sets[j])):
+                if np.isnan(train_sets[j][k]):
+                    train_sets[j][k] = fill_mean[k]
             if j == 0:
-                _train_sets = train_sets[j]
+                _train_sets = train_sets[j][b_good]
                 _targets = targets[j]
-                _test_sets = train_sets[j]
+                _test_sets = train_sets[j][b_good]
                 _test_targets = targets[j]
             else:
                 if standard[j] >= 0.1:
-                    _train_sets = np.vstack((_train_sets, train_sets[j]))
+                    _train_sets = np.vstack((_train_sets, train_sets[j][b_good]))
                     _targets = np.hstack((_targets, targets[j]))
                 else:
-                    _test_sets = np.vstack((_test_sets, train_sets[j]))
+                    _test_sets = np.vstack((_test_sets, train_sets[j][b_good]))
                     _test_targets = np.hstack((_test_targets, targets[j]))
-            # _targets.append(targets[j])
-    train_sets = _train_sets.reshape(-1, 6)
-    test_sets = _test_sets.reshape(-1, 6)
+    train_sets = _train_sets.reshape(-1, 4)
+    test_sets = _test_sets.reshape(-1, 4)
     targets = _targets
     train_sets_withNone = train_sets.copy()
     train_sets_withNone[train_sets_withNone == 0] = np.nan
@@ -177,7 +186,6 @@ def remove_allnan_produce_testset(train_sets, targets):
     print('targets.shape = ', targets.shape)
     print('test_sets.shape = ', test_sets.shape)
     print('test_targets.shape = ', _test_targets.shape)
-    # sys.exit()
     train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
     test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
@@ -210,8 +218,6 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
     else:
         [train_sets, targets] = pack_data(save_data=True)
         print('Ending pack data')
-    train_sets[np.isnan(train_sets)] = 0
-    targets[np.isnan(targets)] = 0
     train_set, target, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
 
     if model_type == 'bp':
@@ -223,7 +229,7 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
     loss_train = []
     loss_tests = []
-    for epoch in range(1500):
+    for epoch in range(1):
         # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
         model.eval()
         y_pre_test = model(test_sets)
@@ -233,6 +239,8 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
         model.train()
         optimizer.zero_grad()
         output = model(train_set)
+        print(output.reshape(-1).size())
+        print(target.size())
         loss = F.mse_loss(output.reshape(-1), target)
         print(loss)
         loss.backward()
@@ -257,7 +265,7 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
 
 
 if __name__ == '__main__':
-    main(load_data=True, plot_loss=True, model_type='xgboost')
+    main(load_data=True, plot_loss=True, model_type='bp')
     '''Try Xgboost'''
     '''Try remove with over 3nons lines'''
 
