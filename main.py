@@ -151,15 +151,15 @@ def pack_data(save_data=True):
 def remove_allnan_produce_testset(train_sets, targets):
     '''Remove those trainsets without useful information'''
     standard = np.random.rand(len(targets))
-    fill_mean = np.nanmean(train_sets, axis=0)
-    print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
     b_good = [0, 1, 3, 4]  # only these columns contain valuable information
+    fill_mean = np.nanmean(train_sets, axis=0)
+    fill_mean_target = np.nanmean(targets, axis=0)
+    print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
+    print('fill_mean_target = ', np.nanmean(targets, axis=0))
     for j in range(len(targets)):
-        try:
-            mean_value = np.nanmean(train_sets[j])
-        except:
-            continue
-        if mean_value != np.nan:
+        mean_value = np.nanmean(train_sets[j]) + targets[j]
+        if ~np.isnan(mean_value):
+            ori = train_sets[j].copy()
             for k in range(len(train_sets[j])):
                 if np.isnan(train_sets[j][k]):
                     train_sets[j][k] = fill_mean[k]
@@ -168,24 +168,28 @@ def remove_allnan_produce_testset(train_sets, targets):
                 _targets = targets[j]
                 _test_sets = train_sets[j][b_good]
                 _test_targets = targets[j]
+                train_sets_withNone = ori[b_good]
             else:
                 if standard[j] >= 0.1:
                     _train_sets = np.vstack((_train_sets, train_sets[j][b_good]))
                     _targets = np.hstack((_targets, targets[j]))
+                    train_sets_withNone = np.vstack((train_sets_withNone, ori[b_good]))
                 else:
                     _test_sets = np.vstack((_test_sets, train_sets[j][b_good]))
                     _test_targets = np.hstack((_test_targets, targets[j]))
     train_sets = _train_sets.reshape(-1, 4)
     test_sets = _test_sets.reshape(-1, 4)
+    train_sets_withNone = train_sets_withNone.reshape(-1, 4)
     targets = _targets
-    train_sets_withNone = train_sets.copy()
-    train_sets_withNone[train_sets_withNone == 0] = np.nan
     print('train_sets = ', train_sets)
     print('targets = ', targets)
     print('train_sets.shape = ', train_sets.shape)
     print('targets.shape = ', targets.shape)
     print('test_sets.shape = ', test_sets.shape)
     print('test_targets.shape = ', _test_targets.shape)
+    print('train_sets_withNone.shape = ', train_sets_withNone.shape)
+    # print(train_sets)
+    # print(train_sets_withNone)
     train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
     test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
@@ -229,7 +233,7 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
     loss_train = []
     loss_tests = []
-    for epoch in range(1):
+    for epoch in range(1000):
         # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
         model.eval()
         y_pre_test = model(test_sets)
@@ -239,8 +243,6 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
         model.train()
         optimizer.zero_grad()
         output = model(train_set)
-        print(output.reshape(-1).size())
-        print(target.size())
         loss = F.mse_loss(output.reshape(-1), target)
         print(loss)
         loss.backward()
