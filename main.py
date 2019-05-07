@@ -148,12 +148,14 @@ def pack_data(save_data=True):
     return [train_set, target]
 
 
-def remove_allnan_produce_testset(train_sets, targets):
+def remove_allnan_produce_testset(train_sets, targets, model_type):
     '''Remove those trainsets without useful information'''
     standard = np.random.rand(len(targets))
     b_good = [0, 1, 3, 4]  # only these columns contain valuable information
-    fill_mean = np.nanmean(train_sets, axis=0)
-    fill_mean_target = np.nanmean(targets, axis=0)
+    if model_type == 'bp':
+        fill_mean = np.nanmean(train_sets, axis=0)
+    elif model_type == 'xgboost':
+        fill_mean = np.zeros([1, 4]) * np.nan
     print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
     print('fill_mean_target = ', np.nanmean(targets, axis=0))
     for j in range(len(targets)):
@@ -199,8 +201,8 @@ def remove_allnan_produce_testset(train_sets, targets):
 
 def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
     plt.subplot(311)
-    plt.plot(loss_train[100:], label='train loss')
-    plt.plot(loss_tests[100:], label='test loss')
+    plt.plot(loss_train[200:], label='train loss')
+    plt.plot(loss_tests[200:], label='test loss')
     plt.legend()
     plt.subplot(312)
     plt.plot(output.data.numpy(), label='Predicted')
@@ -222,7 +224,7 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
     else:
         [train_sets, targets] = pack_data(save_data=True)
         print('Ending pack data')
-    train_set, target, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets)
+    train_set, target, train_sets_withNone, test_sets, test_targets = remove_allnan_produce_testset(train_sets, targets, model_type)
 
     if model_type == 'bp':
         model = DnnModel(node_nums=[20, 0])
@@ -267,7 +269,7 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
 
 
 if __name__ == '__main__':
-    main(load_data=True, plot_loss=True, model_type='bp')
+    main(load_data=True, plot_loss=True, model_type='xgboost')
     '''Try Xgboost'''
     '''Try remove with over 3nons lines'''
 
