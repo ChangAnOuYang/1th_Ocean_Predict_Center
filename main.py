@@ -36,6 +36,14 @@ class DnnModel(nn.Module):
 
 
 def XGBoost_model(X_train, y_train):
+    # dtrain = xgb.DMatrix('demo/data/agaricus.txt.train')
+    # dtest = xgb.DMatrix('demo/data/agaricus.txt.test')
+    # param = {'max_depth': 2, 'eta': 1, 'silent': 1, 'objective': 'binary:logistic'}
+    # num_round = 2
+    # bst = xgb.train(param, dtrain, num_round)
+    # make prediction
+    # preds = bst.predict(dtest)
+    # sys.exit()
     params = {
         'booster': 'gbtree',
         'objective': 'multi:softmax',
@@ -51,9 +59,11 @@ def XGBoost_model(X_train, y_train):
         'seed': 1000,
         'nthread': 4,
     }
-    plst = params.items()
-    dtrain = xgb.DMatrix(X_train, y_train)
+    dtrain = xgb.DMatrix(X_train, y_train, missing=-999)
+    print(X_train)
+    print(y_train)
     num_rounds = 500
+    plst = params.items()
     model = xgb.train(plst, dtrain, num_rounds)
     return model
 
@@ -154,10 +164,13 @@ def remove_allnan_produce_testset(train_sets, targets, model_type):
     b_good = [0, 1, 3, 4]  # only these columns contain valuable information
     if model_type == 'bp':
         fill_mean = np.nanmean(train_sets, axis=0)
+        print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
+        print('fill_mean_target = ', np.nanmean(targets, axis=0))
     elif model_type == 'xgboost':
-        fill_mean = np.zeros([1, 4]) * np.nan
-    print('fill_nanmean = ', np.nanmean(train_sets, axis=0))
-    print('fill_mean_target = ', np.nanmean(targets, axis=0))
+        fill_mean = np.ones(6) * -999
+        print('fill_nanmean = ', fill_mean)
+        print('fill_mean_target = ', -999)
+
     for j in range(len(targets)):
         mean_value = np.nanmean(train_sets[j]) + targets[j]
         if ~np.isnan(mean_value):
@@ -192,11 +205,15 @@ def remove_allnan_produce_testset(train_sets, targets, model_type):
     print('train_sets_withNone.shape = ', train_sets_withNone.shape)
     # print(train_sets)
     # print(train_sets_withNone)
-    train_set, target = Variable(torch.from_numpy(train_sets).float()), \
+    if model_type == 'bp':
+        train_set, target = Variable(torch.from_numpy(train_sets).float()), \
                         Variable(torch.from_numpy(targets).float())
-    test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
+        test_sets, test_targets = Variable(torch.from_numpy(test_sets).float()), \
                               Variable(torch.from_numpy(_test_targets).float())
-    return train_set, target, train_sets_withNone, test_sets, test_targets
+        return train_set, target, train_sets_withNone, test_sets, test_targets
+    elif model_type == 'xgboost':
+        return np.array(train_sets), np.array(targets), train_sets_withNone, test_sets, _test_targets
+
 
 
 def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
@@ -271,7 +288,6 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
 if __name__ == '__main__':
     main(load_data=True, plot_loss=True, model_type='xgboost')
     '''Try Xgboost'''
-    '''Try remove with over 3nons lines'''
 
 
 
