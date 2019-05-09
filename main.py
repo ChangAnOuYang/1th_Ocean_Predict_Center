@@ -44,28 +44,33 @@ def XGBoost_model(X_train, y_train):
     # make prediction
     # preds = bst.predict(dtest)
     # sys.exit()
-    params = {
-        'booster': 'gbtree',
-        'objective': 'multi:softmax',
-        'num_class': 3,
-        'gamma': 0.1,
-        'max_depth': 6,
-        'lambda': 2,
-        'subsample': 0.7,
-        'colsample_bytree': 0.7,
-        'min_child_weight': 3,
-        'silent': 1,
-        'eta': 0.1,
-        'seed': 1000,
-        'nthread': 4,
-    }
-    dtrain = xgb.DMatrix(X_train, y_train, missing=-999)
+    # params = {
+    #     'booster': 'gbtree',
+    #     'objective': 'reg:linear',
+    #     'num_class': 3,
+    #     'gamma': 0.1,
+    #     'max_depth': 6,
+    #     'lambda': 2,
+    #     'subsample': 0.7,
+    #     'colsample_bytree': 0.3,
+    #     'min_child_weight': 3,
+    #     'silent': 1,
+    #     'eta': 0.1,
+    #     'seed': 1000,
+    #     'nthread': 4,
+    # }
+    # plst = params.items()
+    dtrain = xgb.DMatrix(data=X_train, label=y_train, missing=-999)
     print(X_train)
     print(y_train)
     num_rounds = 500
-    plst = params.items()
-    model = xgb.train(plst, dtrain, num_rounds)
-    return model
+    xg_reg = xgb.XGBRegressor(objective='reg:linear', colsample_bytree=1.0, learning_rate=0.01,
+                              max_depth=50, alpha=0.1, n_estimators=10000)
+    xg_reg.fit(X_train, y_train)
+    # xgb.plot_importance(xg_reg)
+    # plt.rcParams['figure.figsize'] = [5, 5]
+    # plt.show()
+    return xg_reg
 
 
 def get_ty_IDs(df, obs_name):
@@ -232,6 +237,22 @@ def plot_results(loss_train, loss_tests, output, target, train_sets_withNone):
     plt.show()
 
 
+def plot_results2(output, target, train_sets_withNone):
+    # plt.subplot(311)
+    # plt.plot(loss_train[200:], label='train loss')
+    # plt.plot(loss_tests[200:], label='test loss')
+    # plt.legend()
+    plt.subplot(211)
+    plt.plot(output, label='Predicted')
+    plt.plot(target, 'k', label='Ground Truth')
+    plt.legend()
+    plt.subplot(212)
+    plt.plot(np.nanmean(train_sets_withNone, axis=1), label='Original Mean Value')
+    plt.plot(target, 'k', label='Ground Truth')
+    plt.legend()
+    plt.show()
+
+
 def main(load_data=True, plot_loss=True, model_type='bp'):
     if load_data:
         print('loading ...')
@@ -246,43 +267,54 @@ def main(load_data=True, plot_loss=True, model_type='bp'):
     if model_type == 'bp':
         model = DnnModel(node_nums=[20, 0])
         print(model)
+        optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
+        loss_train = []
+        loss_tests = []
+        for epoch in range(1000):
+            # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
+            model.eval()
+            y_pre_test = model(test_sets)
+            # print(y_pre_test.reshape(-1))
+            loss_test = float(F.mse_loss(y_pre_test.reshape(-1), test_targets).item())
+
+            model.train()
+            optimizer.zero_grad()
+            output = model(train_set)
+            loss = F.mse_loss(output.reshape(-1), target)
+            print(loss)
+            loss.backward()
+            print('below is weight0:')
+            print(model.state_dict()['layers.0.weight'])
+            print('below is weight2:')
+            print(model.state_dict()['out.weight'])
+            # scheduler.step()
+            optimizer.step()
+            if epoch % 1 == 0:
+                loss_train.append(loss.item())
+                loss_tests.append(loss_test)
+        print('predicted output = ', output.data.numpy().reshape(-1))
+        print('Ground Truth = ', target.data.numpy())
+        print('Original Mean Value = ', np.nanmean(train_sets_withNone, axis=1))
+        # print('Predicted MSE = ', loss.item())
+        print('Predicted MAE = ', np.mean(np.abs((output.reshape(-1) - target).data.numpy())))
+        # print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
+        print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - target)))
+        if plot_loss:
+            plot_results(loss_train, loss_tests, output, target, train_sets_withNone)
     elif model_type == 'xgboost':
         model = XGBoost_model(train_set, target)
-        sys.exit()
-    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.0)
-    loss_train = []
-    loss_tests = []
-    for epoch in range(1000):
-        # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1000, 3000], gamma=0.1)
-        model.eval()
-        y_pre_test = model(test_sets)
-        # print(y_pre_test.reshape(-1))
-        loss_test = float(F.mse_loss(y_pre_test.reshape(-1), test_targets).item())
+        output = model.predict(train_set)
+        print('predicted output = ', output.reshape(-1))
+        print('Ground Truth = ', target)
+        print('Original Mean Value = ', np.nanmean(train_sets_withNone, axis=1))
+        # print('Predicted MSE = ', loss.item())
+        print('Predicted MAE = ', np.mean(np.abs(output.reshape(-1) - target)))
+        # print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
+        print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - target)))
+        if plot_loss:
+            plot_results2(output, target, train_sets_withNone)
 
-        model.train()
-        optimizer.zero_grad()
-        output = model(train_set)
-        loss = F.mse_loss(output.reshape(-1), target)
-        print(loss)
-        loss.backward()
-        print('below is weight0:')
-        print(model.state_dict()['layers.0.weight'])
-        print('below is weight2:')
-        print(model.state_dict()['out.weight'])
-        # scheduler.step()
-        optimizer.step()
-        if epoch % 1 == 0:
-            loss_train.append(loss.item())
-            loss_tests.append(loss_test)
-    print('predicted output = ', output.data.numpy().reshape(-1))
-    print('Ground Truth = ', target.data.numpy())
-    print('Original Mean Value = ', np.nanmean(train_sets_withNone, axis=1))
-    # print('Predicted MSE = ', loss.item())
-    print('Predicted MAE = ', np.mean(np.abs((output.reshape(-1) - target).data.numpy())))
-    # print('Original_Mean_Value_Method MSE = ', np.nanmean((np.nanmean(train_sets_withNone, axis=1) - targets) ** 2))
-    print('Original Mean Value Method MAE = ', np.nanmean(np.abs(np.nanmean(train_sets_withNone, axis=1) - target)))
-    if plot_loss:
-        plot_results(loss_train, loss_tests, output, target, train_sets_withNone)
+
 
 
 if __name__ == '__main__':
