@@ -65,7 +65,7 @@ def XGBoost_model(X_train, y_train):
     print(y_train)
     num_rounds = 500
     xg_reg = xgb.XGBRegressor(objective='reg:linear', colsample_bytree=1.0, learning_rate=0.01,
-                              max_depth=50, alpha=0.1, n_estimators=10000)
+                              max_depth=50, alpha=0.1, n_estimators=1000)
     xg_reg.fit(X_train, y_train)
     # xgb.plot_importance(xg_reg)
     # plt.rcParams['figure.figsize'] = [5, 5]
