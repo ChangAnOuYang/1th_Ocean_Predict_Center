@@ -4,24 +4,50 @@ import os
 import sys
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import datetime as dt
 
-root_dir = r"/Users/ageliss/Downloads/Ocean_Predict_Center_data"
+root_dir=r"C:\Users\AIR\Desktop\OutputData\Research\预报中心data"
 list_dirs = os.walk(root_dir)
 res = pd.DataFrame(columns=['ty_name', 'ty_ID', 'agency', 'time', 'lon', 'lat', 'MSLP', 'MaxWind', '24lat', '24lon',
                             '24MSLP', '24MaxWind', '48lat', '48lon', '48MSLP', '48MaxWind',
                             '72lat', '72lon', '72MSLP', '72MaxWind'])
 for root, dirs, files in list_dirs:
     for d in dirs:
-        dir = os.path.join(root, d)
+        dir=os.path.join(root, d)
         for info in os.listdir(dir):
-            if(info.endswith(".wrf") or info.endswith(".coawst") or info.endswith('.BAB')):
+            if(info.endswith(".wrf") or info.endswith(".coawst")):
+                file_name = os.path.join(dir, info)
+                timeStr = info[1:5] + "-" + info[7:9] + "-" + info[9:11] + " " + info[11:13] + ":00"
+                datetimeStand = dt.datetime.strptime(timeStr, "%Y-%m-%d %H:%M")
+                if (info.endswith(".wrf")):
+                    forecasting_agency = "wrf"
+                else:
+                    forecasting_agency = "coawst"
+                ty_ID = info[3:7]
+                with open(file_name, 'r')  as file:  # 读取文件内容
+                    print('Reading: ', file_name)
+                    for (num, line) in enumerate(file):
+                        if num < 5:
+                            continue
+                        eachline = line.split()
+                        if len(eachline) < 5:
+                            continue
+                        timeCurrent = datetimeStand + dt.timedelta(hours=int(eachline[0]))
+                        timeCurrentStr = timeCurrent.strftime("%Y-%m-%d %H:%M")
+                        data=["",ty_ID,forecasting_agency,timeCurrent,eachline[1],eachline[2],eachline[3],eachline[4]]
+                        df1 = pd.DataFrame([data],
+                                           columns=['ty_name', 'ty_ID', 'agency', 'time', 'lon', 'lat', 'MSLP',
+                                                    'MaxWind'])
+                        res = res.append(df1, ignore_index=True)
+                continue
+            if (info.endswith('.BAB')):
                 '''Write a seperate DataFrame for this kinds'''
                 continue
             file_name = os.path.join(dir, info)  # 将路径与文件名结合起来就是每个文件的完整路径
             with open(file_name, 'r') as file:  # 读取文件内容
                 print('Reading: ', file_name)
                 line = file.readline()
+                # print(line.__str__())
                 eachline = line.split()
 
                 if eachline == []:
@@ -48,8 +74,13 @@ for root, dirs, files in list_dirs:
                     else:
                         eachline = lines.split()
 
+                        # output.write(ty_name + "\t" + ty_ID + "\t" + forecasting_agency + "\t" + eachline[0] + "-" +
+                        #              eachline[1] + "-" + eachline[2] + "时" + "\t")
+                        # for i in range(3,eachline.__len__()):
+                        #     output.write(eachline[i]+"\t")
+                        # print(ty_ID)
                         try:
-                            time = datetime(int(year), int(eachline[0]), int(eachline[1]), int(eachline[2]))
+                            time = dt.datetime(int(year), int(eachline[0]), int(eachline[1]), int(eachline[2]))
                         except:
                             print('Wrong reading: ', file_name)
                             continue
